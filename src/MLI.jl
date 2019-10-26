@@ -203,8 +203,10 @@ function summary_plot_bar2(shap_vals, X)
     plt.gca().xaxis.tick_top()
 end
 
-install_dai() = run(`bash $(joinpath(@__DIR__, "../deps/dai-install.sh"))`)
+const deps = joinpath(@__DIR__, "../deps")
 
-start_dai() = run(`bash $(joinpath(@__DIR__, "../deps/dai-start.sh"))`)
+install_dai() = run(`bash $deps/dai-install.sh`)
+
+start_dai() = run(`bash $deps/dai-start.sh`)
 
 end # module
