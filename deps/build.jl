@@ -1,12 +1,12 @@
 using PyCall: python, Conda
 using Pkg.GitTools: clone
 
-if isempty(Sys.which("sudo"))
+if isnothing(Sys.which("sudo"))
     run(`apt-get update`)
     run(`apt-get install sudo`)
 end
 
-if isempty(Sys.which("gcc"))
+if isnothing(Sys.which("gcc"))
     run(`sudo apt-get install -y build-essential`)
 end
 
@@ -20,4 +20,4 @@ skater = mktempdir()
 clone("https://github.com/oracle/Skater.git", skater)
 run(`sed -i "s|sudo python|$python|g" $skater/setup.sh`)
 run(`sed -i "s|.*install python.*||g" $skater/setup.sh`)
-run(`$python $skater/setup.py install --ostype=linux-ubuntu --rl=True`)
+run(`bash -c "cd $skater && $python setup.py install --ostype=linux-ubuntu --rl=True"`)

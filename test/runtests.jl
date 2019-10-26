@@ -8,6 +8,6 @@ y = X.mean(axis = 1)
 model = LGBMRegressor()
 model.fit(X, y)
 
-# interpret(model, X, y)
-# interpret(X, y)
+interpret(model, X, y)
+interpret(X, y)
 sbrl_interpret(X, y, 1000)

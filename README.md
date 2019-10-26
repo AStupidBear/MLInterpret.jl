@@ -3,10 +3,10 @@
 ## Installation
 
 ```julia
-julia>]
-pkg> add https://github.com/AStupidBear/Pandas.jl.git
-pkg> add https://github.com/AStupidBear/PyCallUtils.jl.git
-pkg> add https://github.com/AStupidBear/MLI.jl.git
+using Pkg
+pkg"add https://github.com/AStupidBear/Pandas.jl.git"
+pkg"add https://github.com/AStupidBear/PyCallUtils.jl.git"
+pkg"add https://github.com/AStupidBear/MLI.jl.git"
 ```
 
 ## Usage
