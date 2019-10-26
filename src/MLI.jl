@@ -133,6 +133,7 @@ function skater_interpret(model, X, y, nsample; ntop = 20)
 end
 
 function dai_interpret(X, y, nsample)
+    start_dai()
     X, y = sample(X, y, nsample)
     target = Series(y, name = "target")
     pred = Series(y, name = "pred")
@@ -198,5 +199,9 @@ function summary_plot_bar2(shap_vals, X)
     plt.xticks(axes(M, 2) .- 1, cols, rotation = 60)
     plt.gca().xaxis.tick_top()
 end
+
+install_dai() = run(`bash $(joinpath(@__DIR__, "../deps/dai-install.sh"))`)
+
+start_dai() = run(`bash $(joinpath(@__DIR__, "../deps/dai-start.sh"))`)
 
 end # module
