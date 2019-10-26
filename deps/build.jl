@@ -4,7 +4,7 @@ using Pkg.GitTools: clone
 install(bin, pkg) = isnothing(Sys.which(bin)) && run(`sudo apt-get install -y $pkg`)
 
 isnothing(Sys.which("sudo")) && 
-run(`apt-get update` & `apt install sudo`)
+run(`apt-get update` & `apt install -y sudo`)
 install("wget", "wget")
 install("gcc", "build-essential")
 install("dot", "graphviz")
