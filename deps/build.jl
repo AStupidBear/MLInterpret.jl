@@ -3,8 +3,8 @@ using Pkg.GitTools: clone
 
 install(bin, pkg) = isnothing(Sys.which(bin)) && run(`sudo apt-get install -y $pkg`)
 
-try run(`apt-get update`) catch end
-install("sudo", "sudo")
+isnothing(Sys.which("sudo")) && 
+run(`apt-get update` & `apt install sudo`)
 install("wget", "wget")
 install("gcc", "build-essential")
 install("graphviz", "graphviz")
