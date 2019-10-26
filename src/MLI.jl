@@ -2,12 +2,15 @@ module MLI
 
 using Random, Statistics, Combinatorics, ProgressMeter, Reexport
 @reexport using PyCall, PyCallUtils, Pandas
+using PyCall: python
 
 export interpret, dai_interpret, sbrl_interpret, fit_surrogate
 
 hasproperty(pyo, s) = !ispynull(pyo) && PyCall.hasproperty(pyo, s)
 
 bash(cmd) = run(`bash -c "$cmd"`)
+
+const pdfcat = joinpath(@__DIR__, "pdfcat")
 
 macro savefig(dst, ex)
     dst, ex = esc(dst), esc(ex)
@@ -129,7 +132,7 @@ function skater_interpret(model, X, y, nsample; ntop = 20)
     @showprogress for (n, c) in enumerate(cols)
         @savefig "pdp/$n.pdf" ppd([c], skater_model, with_variance = true, grid_resolution = 10, sample = false)
     end
-    bash("pdfcat -o pdp.pdf pdp/*.pdf && rm -rf pdp")
+    bash("$python $pdfcat -o pdp.pdf pdp/*.pdf && rm -rf pdp")
 end
 
 function dai_interpret(X, y, nsample)
@@ -157,7 +160,7 @@ function shap_interpret(model, X, y, nsample; ntop = 20)
     for (n, c) in enumerate(cols)
         @savefig "depend/$n.pdf" dependence_plot(c, shap_vals, X)
     end
-    bash("pdfcat -o shap.pdf summary/*.pdf depend/*.pdf && rm -rf summary depend")
+    bash("$python $pdfcat -o shap.pdf summary/*.pdf depend/*.pdf && rm -rf summary depend")
     i = randsubseq(1:length(X), min(1, 5000 / length(X)))
     j = [findfirst(c .== X.columns) for c in cols]
     html = force_plot(explainer.expected_value, shap_vals[i, j], X.iloc[i, j])
@@ -178,7 +181,7 @@ function shap2_interpret(model, X, y, nsample; ntop = 7, cols = X.columns)
     for (n, cc) in enumerate(combinations(cols[1:ntop], 2))
         @savefig "depend/$n.pdf" dependence_plot(cc, shap_vals, X)
     end
-    bash("pdfcat -o shap2.pdf summary/*.pdf depend/*.pdf && rm -rf summary depend")
+    bash("$python $pdfcat -o shap2.pdf summary/*.pdf depend/*.pdf && rm -rf summary depend")
 end
 
 function shap_topfeas(shap_vals, X, ntop = size(X, 2))
