@@ -40,6 +40,6 @@ sbrl_interpret(X, y)
 ```
 
 ```bash
-cat $JULIA_DEPOT_PATH/packages/MLI/Dockerfile | docker build -t MLI -
-docker run -it --init --rm MLI
+cat $JULIA_DEPOT_PATH/packages/MLI/Dockerfile | docker build -t mli -
+docker run -it --init --rm mli
 ```
