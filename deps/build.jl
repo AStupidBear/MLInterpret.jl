@@ -10,7 +10,7 @@ install("gcc", "build-essential")
 install("dot", "graphviz")
 install("add-apt-repository", "software-properties-common")
 
-run(`$python -m pip install pandas sklearn matplotlib lightgbm shap keras tzlocal`)
+run(`$python -m pip install pandas sklearn matplotlib lightgbm shap keras tzlocal PyPDF2`)
 
 Conda.add("gxx_linux-64")
 skater = mktempdir()
