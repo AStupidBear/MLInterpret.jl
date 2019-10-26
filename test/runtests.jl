@@ -1,4 +1,5 @@
 using MLI
+using Test
 
 X = DataFrame(rand(Float32, 1000, 10))
 y = X.mean(axis = 1)
