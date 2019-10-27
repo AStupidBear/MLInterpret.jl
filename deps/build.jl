@@ -1,14 +1,7 @@
 using PyCall: python, Conda
 using Pkg.GitTools: clone
 
-install(bin, pkg) = isnothing(Sys.which(bin)) && run(`sudo apt-get install -y $pkg`)
-
-isnothing(Sys.which("sudo")) && 
-run(`apt-get update` & `apt-get install -y sudo`)
-install("wget", "wget")
-install("gcc", "build-essential")
-install("dot", "graphviz")
-install("add-apt-repository", "software-properties-common")
+isnothing(Sys.which("dot")) && run(`sudo apt-get install -y graphviz`)
 
 run(`$python -m pip install pandas sklearn matplotlib lightgbm shap keras tzlocal PyPDF2`)
 
@@ -17,4 +10,5 @@ skater = mktempdir()
 clone("https://github.com/oracle/Skater.git", skater)
 run(`sed -i "s|sudo python|$python|g" $skater/setup.sh`)
 run(`sed -i "s|.*install python.*||g" $skater/setup.sh`)
+run(`sed -i "s|apt-get install|apt-get install -y|g" $skater/setup.sh`)
 run(`bash -c "cd $skater && $python setup.py install --ostype=linux-ubuntu --rl=True"`)
