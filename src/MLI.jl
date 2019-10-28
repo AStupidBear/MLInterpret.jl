@@ -137,6 +137,8 @@ end
 
 function dai_interpret(X, y, nsample)
     start_dai()
+    whl="http://localhost:12345/static/h2oai_client-1.7.0-py3-none-any.whl"
+    run(`$python -m pip install $whl`)
     X, y = sample(X, y, nsample)
     target = Series(y, name = "target")
     pred = Series(y, name = "pred")
