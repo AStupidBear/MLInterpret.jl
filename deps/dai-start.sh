@@ -1,6 +1,6 @@
 #!/bin/bash
 cd $(dirname $0)
-mkdir dai && cd dai
+mkdir -p dai && cd dai
 mkdir -p data log license tmp
 if [ ! "$(docker ps -a | grep dai)" ]; then
     docker run -d \
