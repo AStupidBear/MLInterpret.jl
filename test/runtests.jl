@@ -10,4 +10,4 @@ model.fit(X, y)
 
 interpret(model, X, y)
 interpret(X, y)
-sbrl_interpret(X, y, 1000)
+sbrl_interpret(X, y)

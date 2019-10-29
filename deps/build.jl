@@ -3,7 +3,7 @@ using Pkg.GitTools: clone
 
 isnothing(Sys.which("dot")) && run(`sudo apt-get install -y graphviz`)
 
-run(`$python -m pip install pandas sklearn matplotlib lightgbm shap keras tzlocal PyPDF2`)
+run(`$python -m pip install pandas sklearn matplotlib lightgbm shap keras tzlocal PyPDF2 unidecode`)
 
 if get(ENV, "FORCE_BUILD_SKATER", "0") == "1" || 
     !occursin("skater", read(`$python -m pip list`, String))

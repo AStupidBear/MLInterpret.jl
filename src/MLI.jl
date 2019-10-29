@@ -5,6 +5,7 @@ using Random, Statistics, Combinatorics, ProgressMeter, Reexport
 using PyCall: python
 
 export interpret, dai_interpret, sbrl_interpret, fit_surrogate
+export shap_interpret, shap2_interpret, skater_interpret
 
 hasproperty(pyo, s) = !ispynull(pyo) && PyCall.hasproperty(pyo, s)
 
@@ -19,7 +20,7 @@ macro savefig(dst, ex)
         plt.matplotlib.use("agg")
         plt.close(plt.gcf())
         $ex; mkpath(dirname($dst))
-        plt.savefig($dst)
+        plt.savefig($dst, bbox_inches = "tight")
     end
 end
 
@@ -48,17 +49,19 @@ macro redirect(src, ex)
     end
 end
 
-istree(model) = occursin(r"gbm|booster|tree|forest"i, string(model))
+istree(model) = occursin(r"gbm|booster|tree|forest"i, string(model)) && hasproperty(model, :predict)
 
 function interpret(model, X, y; nskater = 50000, nsurro = 500000, nshap = 50000, nsbrl = 20000)
     X.columns = X.columns.astype("str")
+    X = X.fillna(X.mean(axis = 0).fillna(0))
     tree = istree(model) ? model : fit_surrogate(X, y)
     pyo =  hasproperty(model, :predict) ? model : tree
     @indir "mli" begin
-        skater_interpret(pyo.predict, X, y, nskater)
         surrogate_interpret(pyo.predict, X, y, nsurro)
         cols = shap_interpret(tree, X, y, nshap)
-        shap2_interpret(tree, X, y, 3000, cols = cols)
+        # shap2_interpret(tree, X, y, 3000, cols = cols)
+        skater_interpret(pyo.predict, X, y, nskater)
+        # sbrl_interpret(tree, X, y, nsbrl, cols = cols)
     end
 end
 
@@ -74,6 +77,9 @@ function sample(X, y, nsample)
 end
 
 function fit_surrogate(X, y; max_depth = 8)
+    @from unidecode imports unidecode
+    cols = [filter(!isspace, unidecode(c)) for c in X.columns]
+    X = DataFrame(X, columns = cols)
     # TODO: tuning parameters
     @from lightgbm imports LGBMRegressor
     @from sklearn.metrics imports r2_score
@@ -88,7 +94,7 @@ function fit_surrogate(X, y; max_depth = 8)
     return surrogate
 end
 
-function sbrl_interpret(X, y, nsample; sample_method = "sample", cols = X.columns)
+function sbrl_interpret(X, y, nsample = length(y); sample_method = "sample", cols = X.columns)
     @from skater.core.global_interpretation.interpretable_models.brlc imports BRLC
     @from skater.core.global_interpretation.interpretable_models.bigdatabrlc imports BigDataBRLC
     if sample_method == "sample"
@@ -106,7 +112,7 @@ function sbrl_interpret(X, y, nsample; sample_method = "sample", cols = X.column
     end
 end
 
-function surrogate_interpret(model, X, y, nsample)
+function surrogate_interpret(model, X, y, nsample = length(y))
     X, y = sample(X, y, nsample)
     @from skater.model imports InMemoryModel
     @from skater.core.global_interpretation.tree_surrogate imports TreeSurrogate
@@ -118,7 +124,7 @@ function surrogate_interpret(model, X, y, nsample)
     end
 end
 
-function skater_interpret(model, X, y, nsample; ntop = 20)
+function skater_interpret(model, X, y, nsample = length(y); ntop = 20)
     X, y = sample(X, y, nsample)
     @from skater.core.explanations imports Interpretation
     @from skater.model imports InMemoryModel
@@ -135,10 +141,10 @@ function skater_interpret(model, X, y, nsample; ntop = 20)
     bash("$python $pdfcat -o pdp.pdf pdp/*.pdf && rm -rf pdp")
 end
 
-function dai_interpret(X, y, nsample)
+function dai_interpret(X, y, nsample = length(y))
     start_dai()
     whl="http://localhost:12345/static/h2oai_client-1.7.0-py3-none-any.whl"
-    run(`$python -m pip install $whl`)
+    run(pipeline(`$python -m pip install $whl`, stdout = devnull))
     X, y = sample(X, y, nsample)
     target = Series(y, name = "target")
     pred = Series(y, name = "pred")
@@ -151,7 +157,7 @@ function dai_interpret(X, y, nsample)
     touch(mli.description * ".mli")
 end
 
-function shap_interpret(model, X, y, nsample; ntop = 20)
+function shap_interpret(model, X, y, nsample = length(y); ntop = 20)
     X, y = sample(X, y, nsample)
     @from shap imports TreeExplainer, summary_plot, dependence_plot, force_plot, save_html
     explainer = TreeExplainer(model)
@@ -170,11 +176,9 @@ function shap_interpret(model, X, y, nsample; ntop = 20)
     return cols
 end
 
-function shap2_interpret(model, X, y, nsample; ntop = 7, cols = X.columns)
-    @from copy imports deepcopy
-    X, model = X[cols], deepcopy(model)
-    model.fit(X, y, eval_set = [(X, y)])
-    X, y = sample(X, y, nsample)
+function shap2_interpret(model, X, y, nsample = length(y); ntop = 7, cols = X.columns)
+    model = fit_surrogate(X[cols], y)
+    X, y = sample(X[cols], y, nsample)
     @from shap imports TreeExplainer, summary_plot, dependence_plot
     explainer = TreeExplainer(model)
     shap_vals = explainer.shap_interaction_values(X)
