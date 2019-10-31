@@ -37,7 +37,8 @@ This will generate a folder `mli` in the current directory which contains
 - `perturb_feaimpt.csv`: feature importance calculated by purturbation [link](https://oracle.github.io/Skater/reference/interpretation.html#feature-importance) ![](screenshots/perturb_featimpt.png)
 - `shap.pdf`: shap value [link](https://github.com/slundberg/shap) ![](screenshots/shap.png)
 - `shap2.pdf`: shap interaction value [link](https://github.com/slundberg/shap) ![](screenshots/shap2.png)
-- `surrogate_tree-*.pdf`: surrogate tree [link](https://oracle.github.io/Skater/reference/interpretation.html#skater.core.global_interpretation.tree_surrogate.TreeSurrogate) ![](screenshots/surrogate_tree.png)
+- `surrogate_tree-*.pdf`: surrogate tree [link](https://oracle.github.io/Skater/reference/interpretation.html#skater.core.global_interpretation.tree_surrogate.TreeSurrogate) 
+![](screenshots/surrogate_tree.png)
 - `actual.pdf`: actual plot [link](https://pdpbox.readthedocs.io/en/latest/actual_plot.html) ![](screenshots/actual.png)
 - `actual2.pdf`: actual interaction plot [link](https://pdpbox.readthedocs.io/en/latest/actual_plot_interact.html) ![](screenshots/actual2.png)
 
