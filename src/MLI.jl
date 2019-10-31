@@ -1,11 +1,13 @@
 module MLI
 
-using Random, Statistics, Combinatorics, ProgressMeter, Reexport
+using Random, Statistics, Combinatorics, Distributed
+using ProgressMeter, Reexport
 @reexport using PyCall, PyCallUtils, Pandas
 using PyCall: python
+using Pandas: PandasWrapped
+import StatsBase: sample, Weights
 
-export interpret, dai_interpret, sbrl_interpret, fit_surrogate
-export shap_interpret, shap2_interpret, skater_interpret
+export interpret, fit_surrogate, dai_interpret, sbrl_interpret, dnn_interpret
 
 hasproperty(pyo, s) = !ispynull(pyo) && PyCall.hasproperty(pyo, s)
 
@@ -22,6 +24,13 @@ macro savefig(dst, ex)
         $ex; mkpath(dirname($dst))
         plt.savefig($dst, bbox_inches = "tight")
     end
+end
+
+macro savefig(dir, n, ex)
+    quote
+        dst = joinpath($dir, lpad($n, 2, "0") * ".pdf")
+        @savefig dst $ex
+    end |> esc
 end
 
 macro indir(dir, ex)
@@ -51,30 +60,30 @@ end
 
 istree(model) = occursin(r"gbm|booster|tree|forest"i, string(model)) && hasproperty(model, :predict)
 
-function interpret(model, X, y; nskater = 50000, nsurro = 500000, nshap = 50000, nsbrl = 20000)
+function interpret(model, X, y; nskater = 50000, nsurro = 500000, nshap = 50000, nshap2 = 3000)
     X.columns = X.columns.astype("str")
     X = X.fillna(X.mean(axis = 0).fillna(0))
     tree = istree(model) ? model : fit_surrogate(X, y)
     pyo =  hasproperty(model, :predict) ? model : tree
     @indir "mli" begin
-        surrogate_interpret(pyo.predict, X, y, nsurro)
-        cols = shap_interpret(tree, X, y, nshap)
-        # shap2_interpret(tree, X, y, 3000, cols = cols)
-        skater_interpret(pyo.predict, X, y, nskater)
-        # sbrl_interpret(tree, X, y, nsbrl, cols = cols)
+        surrogate_interpret(pyo.predict, X, y, nsample = nsurro)
+        cols = shap_interpret(tree, X, nsample = nshap)
+        pdp_interpret(pyo, X, nsample = nskater, cols = cols)
+        shap2_interpret(X, y, nsample = nshap2, cols = cols)
+        skater_interpret(pyo.predict, X, y, nsample = nskater)
     end
 end
 
 interpret(X, y; ka...) = interpret(PyNULL(), X, y; ka...)
 
-function sample(X, y, nsample)
-    nsample >= length(y) && return X, y
-    X = X.sample(nsample, random_state = 12345)
-    y = y.sample(nsample, random_state = 12345)
-    X.reset_index(inplace = true, drop = true)
-    y.reset_index(inplace = true, drop = true)
-    return X, y
+function sample(x::PandasWrapped, nsample)
+    nsample >= length(x) && return x
+    x = x.sample(nsample, random_state = 12345)
+    x.reset_index(inplace = true, drop = true)
+    return x
 end
+
+sample(X::PandasWrapped, y, nsample) = sample(X, nsample), sample(y, nsample)
 
 function fit_surrogate(X, y; max_depth = 8)
     @from unidecode imports unidecode
@@ -94,7 +103,7 @@ function fit_surrogate(X, y; max_depth = 8)
     return surrogate
 end
 
-function sbrl_interpret(X, y, nsample = length(y); sample_method = "sample", cols = X.columns)
+function sbrl_interpret(X, y; nsample = length(y), sample_method = "sample", cols = X.columns)
     @from skater.core.global_interpretation.interpretable_models.brlc imports BRLC
     @from skater.core.global_interpretation.interpretable_models.bigdatabrlc imports BigDataBRLC
     if sample_method == "sample"
@@ -112,19 +121,19 @@ function sbrl_interpret(X, y, nsample = length(y); sample_method = "sample", col
     end
 end
 
-function surrogate_interpret(model, X, y, nsample = length(y))
+function surrogate_interpret(model, X, y; nsample = length(X))
     X, y = sample(X, y, nsample)
     @from skater.model imports InMemoryModel
     @from skater.core.global_interpretation.tree_surrogate imports TreeSurrogate
     skater_model = InMemoryModel(model, feature_names = X.columns, examples = X.iloc[1:2])
-    for n in broadcast(^, 2, [2, 3, 4])
+    for n in broadcast(^, 2, [3, 4, 5])
         surrogate_explainer = TreeSurrogate(skater_model, max_leaf_nodes = 2n)
         surrogate_explainer.fit(X, y, use_oracle = false)
         surrogate_explainer.plot_global_decisions(file_name = "surrogate_tree-$n.png")
     end
 end
 
-function skater_interpret(model, X, y, nsample = length(y); ntop = 20)
+function skater_interpret(model, X, y; nsample = length(X), ntop = 20)
     X, y = sample(X, y, nsample)
     @from skater.core.explanations imports Interpretation
     @from skater.model imports InMemoryModel
@@ -136,12 +145,28 @@ function skater_interpret(model, X, y, nsample = length(y); ntop = 20)
     ppd = interpreter.partial_dependence.plot_partial_dependence
     cols = sr.head(ntop).index.tolist()
     @showprogress for (n, c) in enumerate(cols)
-        @savefig "pdp/$n.pdf" ppd([c], skater_model, with_variance = true, grid_resolution = 10, sample = false)
+        @savefig "pdp" n ppd([c], skater_model, with_variance = true, grid_resolution = 10, sample = false)
     end
     bash("$python $pdfcat -o pdp.pdf pdp/*.pdf && rm -rf pdp")
 end
 
-function dai_interpret(X, y, nsample = length(y))
+function pdp_interpret(model, X; nsample = length(X), ntop = 7, cols = X.columns)
+    X = sample(X, nsample)
+    @from pdpbox.info_plots imports actual_plot, actual_plot_interact
+    @from warnings imports filterwarnings
+    filterwarnings("ignore"; :module => "pdpbox")
+    plot_params = Dict("font_family" => "sans-serif")
+    for (n, c) in enumerate(cols)
+        @savefig "actual" n actual_plot(model, X, c, c, predict_kwds = Dict(), plot_params = plot_params)
+    end
+    bash("$python $pdfcat -o actual.pdf actual/*.pdf && rm -rf actual")
+    for (n, cc) in enumerate(combinations(cols[1:min(ntop, end)], 2))
+        @savefig "actual2" n actual_plot_interact(model, X, cc, cc, predict_kwds = Dict(), plot_params = plot_params)
+    end
+    bash("$python $pdfcat -o actual2.pdf actual2/*.pdf && rm -rf actual2")
+end
+
+function dai_interpret(X, y; nsample = length(X))
     start_dai()
     whl="http://localhost:12345/static/h2oai_client-1.7.0-py3-none-any.whl"
     run(pipeline(`$python -m pip install $whl`, stdout = devnull))
@@ -157,8 +182,8 @@ function dai_interpret(X, y, nsample = length(y))
     touch(mli.description * ".mli")
 end
 
-function shap_interpret(model, X, y, nsample = length(y); ntop = 20)
-    X, y = sample(X, y, nsample)
+function shap_interpret(model, X; nsample = length(X), ntop = 20)
+    X = sample(X, nsample)
     @from shap imports TreeExplainer, summary_plot, dependence_plot, force_plot, save_html
     explainer = TreeExplainer(model)
     shap_vals = explainer.shap_values(X)
@@ -166,7 +191,7 @@ function shap_interpret(model, X, y, nsample = length(y); ntop = 20)
     @savefig "summary/dot.pdf" summary_plot(shap_vals, X)
     @savefig "summary/bar.pdf" summary_plot(shap_vals, X, plot_type = "bar")
     for (n, c) in enumerate(cols)
-        @savefig "depend/$n.pdf" dependence_plot(c, shap_vals, X)
+        @savefig "depend" n dependence_plot(c, shap_vals, X)
     end
     bash("$python $pdfcat -o shap.pdf summary/*.pdf depend/*.pdf && rm -rf summary depend")
     i = randsubseq(1:length(X), min(1, 5000 / length(X)))
@@ -176,7 +201,7 @@ function shap_interpret(model, X, y, nsample = length(y); ntop = 20)
     return cols
 end
 
-function shap2_interpret(model, X, y, nsample = length(y); ntop = 7, cols = X.columns)
+function shap2_interpret(X, y; nsample = length(X), ntop = 7, cols = X.columns)
     model = fit_surrogate(X[cols], y)
     X, y = sample(X[cols], y, nsample)
     @from shap imports TreeExplainer, summary_plot, dependence_plot
@@ -184,8 +209,8 @@ function shap2_interpret(model, X, y, nsample = length(y); ntop = 7, cols = X.co
     shap_vals = explainer.shap_interaction_values(X)
     @savefig "summary/dot.pdf" summary_plot(shap_vals, X)
     @savefig "summary/bar.pdf" summary_plot_bar2(shap_vals, X)
-    for (n, cc) in enumerate(combinations(cols[1:ntop], 2))
-        @savefig "depend/$n.pdf" dependence_plot(cc, shap_vals, X)
+    for (n, cc) in enumerate(combinations(cols[1:min(ntop, end)], 2))
+        @savefig "depend" n dependence_plot(cc, shap_vals, X)
     end
     bash("$python $pdfcat -o shap2.pdf summary/*.pdf depend/*.pdf && rm -rf summary depend")
 end
@@ -204,9 +229,91 @@ function summary_plot_bar2(shap_vals, X)
     M, cols = M[is, is], X.columns[is]
     @imports matplotlib.pyplot as plt
     plt.imshow(M)
-    plt.yticks(axes(M, 1) .- 1, cols, rotation = 60)
-    plt.xticks(axes(M, 2) .- 1, cols, rotation = 60)
+    plt.yticks(axes(M, 1) .- 1, cols)
+    plt.xticks(axes(M, 2) .- 1, cols)
     plt.gca().xaxis.tick_top()
+end
+
+function dnn_interpret(a...; ka...)
+    id, = addprocs(1)
+    @eval @everywhere using MLI
+    remotecall_fetch(_dnn_interpret, id, a...; ka...)
+    rmprocs(id)
+end
+
+function _dnn_interpret(h5::String, a...; ka...)
+    @from keras.models imports load_model
+    model = load_model(h5, compile = false)
+    _dnn_interpret(model, a...; ka...)
+end
+
+function _dnn_interpret(model, X; alg = "deeplift", width = 20, nsample = 5000, nviz = 100, recep = 0, cols = [])
+    X = sample_clip(X, nsample, recep)
+    if model.output.shape.ndims == 3
+        @from keras.layers imports Lambda
+        @from keras.models imports Model
+        output = Lambda(py"lambda x: x[:, -1, :]")(model.output)
+        model = Model(model.inputs, output)
+    end
+    Xviz = sample_rank(X, vec(model.predict(X)), nviz)
+    @from shap imports DeepExplainer, GradientExplainer, image_plot
+    class = alg == "deeplift" ? DeepExplainer : GradientExplainer
+    shap_vals, = class(model, X).shap_values(Xviz)
+    @imports matplotlib.pyplot as pl
+    @from shap.plots imports colors
+    @from matplotlib.backends.backend_pdf imports PdfPages
+    @imports numpy as np
+    max_val = np.nanpercentile(abs.(shap_vals), 99.9)
+    xmax = np.nanpercentile(X, 99.9)
+    xmin = np.nanpercentile(X, 0.1)
+    smax = np.nanpercentile(abs.(shap_vals), 99.9)
+    pdf = PdfPages("dnn.pdf")
+    @showprogress for n in 1:size(Xviz, 1)
+        x = permutedims(Xviz[n, :, :])
+        sv = permutedims(shap_vals[n, :, :])
+        figsize = [3 * (size(x, 1) + 1), 2.5 * (size(x, 2) + 1)]
+        if figsize[1] > width
+            @. figsize = width * figsize / figsize[1]
+        end
+        fig, axes = pl.subplots(ncols = 2, sharey = true, figsize = figsize)
+        axes[1].imshow(x, cmap = pl.get_cmap("gray"), vmin = xmin, vmax = xmax)
+        if !isempty(cols)
+            axes[1].set_yticks(0:size(x, 1))
+            axes[1].set_yticklabels(cols)
+            labelsize = 5 * figsize[1] / size(x, 1)
+            axes[1].tick_params(axis = "y", labelsize = labelsize, length = 0)
+            axes[1].get_xaxis().set_visible(false)
+        else
+            axes[1].set_axis_off()
+        end
+        axes[2].imshow(x, cmap = pl.get_cmap("gray"), alpha = 0.15)
+        axes[2].imshow(sv, cmap = colors.red_transparent_blue, vmin = -smax, vmax = smax)
+        axes[2].set_axis_off()
+        fig.tight_layout()
+        pdf.savefig(fig, bbox_inches = "tight")
+        pl.close(fig)
+    end
+    pdf.close()
+end
+
+function sample_clip(X, nsample, recep)
+    N, T, F = size(X)
+    recep = recep == 0 ? T : recep
+    nsample = min(nsample, N * T ÷ recep)
+    Xs = zeros(Float32, nsample, recep, F)
+    for ns in 1:nsample
+        n, t = rand(1:N), rand(1:(T - recep + 1))
+        Xs[ns, :, :] = X[n, t:(t + recep - 1), :]
+    end
+    return Xs
+end
+
+function sample_rank(X, y, nsample)
+    nsample = min(nsample, length(y))
+    perm = sortperm(y, by = abs, rev = true)
+    wv = Weights(1 ./ axes(y, 1)[invperm(perm)])
+    ns = sample(1:length(y), wv, nsample, replace = false)
+    return X[ns, :, :]
 end
 
 const deps = joinpath(@__DIR__, "../deps")
