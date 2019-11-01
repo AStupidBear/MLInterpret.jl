@@ -1,4 +1,4 @@
-using MLI
+using MLInterpret
 using Test
 
 X = DataFrame(rand(Float32, 1000, 10))

@@ -1,11 +1,12 @@
-module MLI
+module MLInterpret
 
 using Random, Statistics, Combinatorics, Distributed
 using ProgressMeter, Reexport
-@reexport using PyCall, PyCallUtils, Pandas
+@reexport using PyCall, PyCallUtils, PandasLite
 using PyCall: python
-using Pandas: PandasWrapped
+using PandasLite: PandasWrapped
 import StatsBase: sample, Weights
+using Pkg.GitTools: clone
 
 export interpret, fit_surrogate, dai_interpret, sbrl_interpret, dnn_interpret
 
@@ -321,5 +322,14 @@ const deps = joinpath(@__DIR__, "../deps")
 install_dai() = run(`bash $deps/dai-install.sh`)
 
 start_dai() = run(`bash $deps/dai-start.sh`)
+
+function install_brl()
+    skater = mktempdir()
+    clone("https://github.com/oracle/Skater.git", skater)
+    run(`sed -i "s|sudo python|$python|g" $skater/setup.sh`)
+    run(`sed -i "s|.*install python.*||g" $skater/setup.sh`)
+    run(`sed -i "s|apt-get install|apt-get install -y|g" $skater/setup.sh`)
+    run(`bash -c "cd $skater && $python setup.py install --ostype=linux-ubuntu --rl=True"`)
+end
 
 end # module

@@ -4,13 +4,13 @@
 
 ```julia
 using Pkg
-pkg"add MLI"
+pkg"add MLInterpret"
 ```
 
 ## Usage
 
 ```julia
-using MLI
+using MLInterpret
 X = DataFrame(randn(Float32, 10000, 5))
 y = (X[3] > 0) & (X[2] >= 0)
 @from lightgbm imports LGBMRegressor
