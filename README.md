@@ -20,13 +20,13 @@ model.fit(X, y)
 
 You can interpret any machine learning model from Python which has a property `.predict` by calling
 
-```
+```julia
 interpret(model, X, y)
 ```
 
 If your model dosen't have a property '.predict' (like Julia models), you can still interpret its predictions by
 
-```
+```julia
 ŷ = model.predict(X)
 interpret(X, ŷ)
 ```
@@ -67,7 +67,7 @@ Open `http://127.0.0.1:12345/`, click `MLI`, choose the toppest `Interpreted Mod
 
 #### Installation
 
-```
+```julia
 using Pkg
 ENV["MLI_RL"] = 1
 Pkg.build("MLI")
