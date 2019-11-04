@@ -4,6 +4,7 @@ authors = ["Yao Lu <luyaocns@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+BinDeps = "9e28174c-4ba2-5203-b857-d8d62c4213ee"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 PandasLite = "f5117550-fbe7-11e9-2624-0f3969024220"
@@ -17,6 +18,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
+BinDeps = "0.8"
 PandasLite = "0.1"
 ProgressMeter = "1"
 PyCall = "1.19"
