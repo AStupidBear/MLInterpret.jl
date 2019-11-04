@@ -7,6 +7,12 @@ using Pkg
 pkg"add MLInterpret"
 ```
 
+Try without installation using docker
+
+```bash
+curl https://raw.githubusercontent.com/AStupidBear/MLInterpret.jl/master/Dockerfile.py |python3
+```
+
 ## Usage
 
 ```julia
