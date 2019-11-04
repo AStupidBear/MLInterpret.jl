@@ -5,6 +5,7 @@ using BinDeps: generate_steps, getallproviders, lower, PackageManager
 !Sys.islinux() && exit()
 
 if conda && Conda.version("python") >= v"3.7"
+    # skater does not support python3.7
     Conda.add("python=3.6")
 end
 
