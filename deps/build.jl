@@ -1,6 +1,10 @@
 using BinDeps, PyCall
-using PyCall: python
+using PyCall: python, conda, Conda
 using BinDeps: generate_steps, getallproviders, lower, PackageManager
+
+if conda && Conda.version("python") >= v"3.7"
+    Conda.add("python=3.6")
+end
 
 @BinDeps.setup
 gcc = library_dependency("gcc")
