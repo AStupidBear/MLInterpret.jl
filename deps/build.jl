@@ -12,7 +12,10 @@ if Sys.islinux()
 end
 for dep in bindeps_context.deps
     dp, opts = getallproviders(dep, PackageManager)[1]
-    run(lower(generate_steps(dep, dp, opts)))
+    cmd = lower(generate_steps(dep, dp, opts)).steps[1]
+    i = findfirst(x -> x == "install", cmd.exec)
+    insert!(cmd.exec, i + 1, "-y")
+    run(cmd)
 end
 
 run(`$python -m pip install --user pandas sklearn matplotlib lightgbm shap keras tzlocal PyPDF2 unidecode skater`)
