@@ -5,9 +5,10 @@ using BinDeps: generate_steps, getallproviders, lower, PackageManager
 @BinDeps.setup
 gcc = library_dependency("gcc")
 dot = library_dependency("dot")
+python3 = library_dependency("python3")
 if Sys.islinux()
-    provides(AptGet, Dict("gcc" => gcc, "graphviz" => dot))
-    provides(Yum, Dict("gcc-c++" => gcc, "graphviz" => dot))
+    provides(AptGet, Dict("gcc" => gcc, "python3-dev" => python3, "graphviz" => dot))
+    provides(Yum, Dict("gcc-c++" => gcc, "python3-devel" => python3, "graphviz" => dot))
 end
 for dep in bindeps_context.deps
     dp, opts = getallproviders(dep, PackageManager)[1]
