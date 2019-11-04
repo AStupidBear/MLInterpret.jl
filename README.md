@@ -10,6 +10,12 @@ pkg"add MLInterpret"
 Try without installation using docker
 
 ```bash
+docker run -it --rm astupidbear/mli
+```
+
+Or build it from Dockerfile
+
+```bash
 curl https://raw.githubusercontent.com/AStupidBear/MLInterpret.jl/master/Dockerfile.py |python3
 ```
 
