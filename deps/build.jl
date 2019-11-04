@@ -32,4 +32,4 @@ for dep in bindeps_context.deps
     run(cmd)
 end
 
-run(`$python -m pip install --user pandas sklearn matplotlib lightgbm shap keras tzlocal PyPDF2 unidecode skater`)
+run(`$python -m pip install --user pandas sklearn matplotlib lightgbm ipython shap keras tzlocal PyPDF2 unidecode skater pdpbox`)
