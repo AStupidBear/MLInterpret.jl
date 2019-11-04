@@ -19,6 +19,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 BinDeps = "0.8"
+Combinatorics = "0.7"
 PandasLite = "0.1"
 ProgressMeter = "1"
 PyCall = "1.19"
