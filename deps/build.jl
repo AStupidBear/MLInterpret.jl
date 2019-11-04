@@ -2,18 +2,26 @@ using BinDeps, PyCall
 using PyCall: python, conda, Conda
 using BinDeps: generate_steps, getallproviders, lower, PackageManager
 
+!Sys.islinux() && exit()
+
 if conda && Conda.version("python") >= v"3.7"
     Conda.add("python=3.6")
 end
 
+if isnothing(Sys.which("sudo")) # in docker
+    try run(`apt update`) catch end
+    try run(`yum update`) catch end
+end
+
 @BinDeps.setup
+
 gcc = library_dependency("gcc")
 dot = library_dependency("dot")
 python3 = library_dependency("python3")
-if Sys.islinux()
-    provides(AptGet, Dict("gcc" => gcc, "python3-dev" => python3, "graphviz" => dot))
-    provides(Yum, Dict("gcc-c++" => gcc, "python3-devel" => python3, "graphviz" => dot))
-end
+
+provides(AptGet, Dict("g++" => gcc, "python3-dev" => python3, "graphviz" => dot))
+provides(Yum, Dict("gcc-c++" => gcc, "python3-devel" => python3, "graphviz" => dot))
+
 for dep in bindeps_context.deps
     dp, opts = getallproviders(dep, PackageManager)[1]
     cmd = lower(generate_steps(dep, dp, opts)).steps[1]
