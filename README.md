@@ -16,7 +16,8 @@ docker run -it --rm astupidbear/mli
 Or build it from Dockerfile
 
 ```bash
-curl https://raw.githubusercontent.com/AStupidBear/MLInterpret.jl/master/Dockerfile.py |python3
+url=https://raw.githubusercontent.com/AStupidBear/MLInterpret.jl/master/Dockerfile.py
+python3 -c "$(curl $url)"
 ```
 
 ## Usage
