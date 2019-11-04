@@ -1,4 +1,4 @@
-using BinDeps, PyCall
+using Pkg, BinDeps, PyCall
 using PyCall: python, conda, Conda
 using BinDeps: generate_steps, getallproviders, lower, PackageManager
 
@@ -7,6 +7,7 @@ using BinDeps: generate_steps, getallproviders, lower, PackageManager
 if conda && Conda.version("python") >= v"3.7"
     # skater does not support python3.7
     Conda.add("python=3.6")
+    Pkg.build("PyCall")
 end
 
 if isnothing(Sys.which("sudo")) # in docker
