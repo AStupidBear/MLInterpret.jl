@@ -1,4 +1,7 @@
 using MLInterpret
+using PyCall
+using PyCallUtils
+using PandasLite
 using Test
 
 X = DataFrame(rand(Float32, 1000, 10))

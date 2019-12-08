@@ -32,4 +32,9 @@ for dep in bindeps_context.deps
     run(cmd)
 end
 
-run(`$python -m pip install --user pandas sklearn matplotlib lightgbm ipython shap keras tzlocal PyPDF2 unidecode skater pdpbox`)
+run(`$python -m pip install --user pandas sklearn matplotlib lightgbm ipython shap keras tzlocal PyPDF2 unidecode pdpbox`)
+run(`$python install git+https://github.com/AStupidBear/Skater.git`)
+
+buildsh = joinpath(@__DIR__, "build.sh")
+ENV["JULIA_DEPOT_PATH"] = DEPOT_PATH[1]
+run(`bash $buildsh`)

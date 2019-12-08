@@ -1,8 +1,7 @@
 module MLInterpret
 
 using Random, Statistics, Combinatorics, Distributed
-using ProgressMeter, Reexport
-@reexport using PyCall, PyCallUtils, PandasLite
+using ProgressMeter, PyCall, PyCallUtils, PandasLite
 using PyCall: python
 using PandasLite: PandasWrapped
 import StatsBase: sample, Weights
@@ -167,8 +166,18 @@ function pdp_interpret(model, X; nsample = length(X), ntop = 7, cols = X.columns
     bash("$python $pdfcat -o actual2.pdf actual2/*.pdf && rm -rf actual2")
 end
 
+function pyrun(str)
+    println(str)
+    cmd = Cmd(["python", "-c", str])
+    faketime = joinpath(DEPOT_PATH[1], "faketime/lib/libfaketimeMT.so.1")
+    withenv("LD_PRELOAD" => faketime, "FAKETIME" => "-10year") do
+        lines = readlines(cmd)
+        println(join(lines, '\n'))
+        lines[end]
+    end
+end
+
 function dai_interpret(X, y; nsample = length(X))
-    start_dai()
     whl="http://localhost:12345/static/h2oai_client-1.7.0-py3-none-any.whl"
     run(pipeline(`$python -m pip install $whl`, stdout = devnull))
     X, y = sample(X, y, nsample)
@@ -176,11 +185,15 @@ function dai_interpret(X, y; nsample = length(X))
     pred = Series(y, name = "pred")
     df = pd.concat([X, target, pred], axis = 1)
     df.to_parquet("pred.parquet")
-    @from h2oai_client imports Client
-    h2oai = Client(address = "http://127.0.0.1:12345", username = "abcd", password = "dcba")
-    pred = h2oai.upload_dataset_sync("pred.parquet")
-    mli = h2oai.run_interpretation_sync("", pred.key, "target", prediction_col = "pred")
-    touch(mli.description * ".mli")
+    desc = """
+    from h2oai_client import Client
+    h2oai = Client(address='http://127.0.0.1:12345', username='username', password='password')
+    pred = h2oai.upload_dataset_sync('pred.parquet')
+    mli = h2oai.run_interpretation_sync('', pred.key, 'target', prediction_col='pred')
+    print(mli.description)
+    """ |> pyrun
+    rm("pred.parquet")
+    touch(desc * ".mli")
 end
 
 function shap_interpret(model, X; nsample = length(X), ntop = 20)
@@ -319,13 +332,9 @@ end
 
 const deps = joinpath(@__DIR__, "../deps")
 
-install_dai() = run(`bash $deps/dai-install.sh`)
-
-start_dai() = run(`bash $deps/dai-start.sh`)
-
 function install_brl()
     skater = mktempdir()
-    clone("https://github.com/oracle/Skater.git", skater)
+    clone("https://github.com/AStupidBear/Skater.git", skater)
     run(`sed -i "s|sudo python|$python|g" $skater/setup.sh`)
     run(`sed -i "s|.*install python.*||g" $skater/setup.sh`)
     run(`sed -i "s|apt-get install|apt-get install -y|g" $skater/setup.sh`)

@@ -24,6 +24,9 @@ python3 -c "$(curl $url)"
 
 ```julia
 using MLInterpret
+using PyCall
+using PyCallUtils
+using PandasLite
 X = DataFrame(randn(Float32, 10000, 5))
 y = (X[3] > 0) & (X[2] >= 0)
 @from lightgbm imports LGBMRegressor
@@ -57,11 +60,16 @@ This will generate a folder `mli` in the current directory which contains
 
 ### MLI with [H2O Driverless AI](https://www.h2o.ai/products/h2o-driverless-ai/)
 
-#### Installation
+#### Start DAI
 
-```julia
-MLI.install_dai()
-MLI.start_dai()
+```bash
+docker run -d \
+    --pid=host \
+    --init \
+    -u `id -u`:`id -g` \
+    -p 12345:12345 \
+    -v /dev/shm:/dev/shm \
+    astupidbear/dai:1.7.0
 ```
 
 You can get a trial license of H2O Driverless AI from [H2O](https://www.h2o.ai/try-driverless-ai/), then open `http://127.0.0.1:12345/`, login and enter your license.
@@ -81,9 +89,8 @@ Open `http://127.0.0.1:12345/`, click `MLI`, choose the toppest `Interpreted Mod
 #### Installation
 
 ```julia
-using Pkg
-ENV["MLI_RL"] = 1
-Pkg.build("MLI")
+using MLInterpret
+MLInterpret.install_brl()
 ```
 
 ### Interpret
