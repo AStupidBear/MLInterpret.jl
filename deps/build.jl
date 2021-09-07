@@ -27,7 +27,7 @@ for dep in bindeps_context.deps
     try run(cmd) catch end
 end
 
-run(`$python -m pip install --user pandas "scikit-learn<=0.22.2" matplotlib lightgbm ipython shap keras tzlocal PyPDF2 unidecode pdpbox`)
+run(`$python -m pip install --user "numpy<=1.20" pandas "scikit-learn<=0.22.2" matplotlib lightgbm ipython shap keras tzlocal PyPDF2 unidecode pdpbox`)
 run(`$python -m pip install git+https://github.com/oracle/Skater.git`)
 
 buildsh = joinpath(@__DIR__, "build.sh")
