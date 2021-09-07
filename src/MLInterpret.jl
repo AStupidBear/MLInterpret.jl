@@ -70,7 +70,7 @@ function interpret(model, X, y; nskater = 50000, nsurro = 500000, nshap = 50000,
         cols = shap_interpret(tree, X, nsample = nshap)
         pdp_interpret(pyo, X, nsample = nskater, cols = cols)
         shap2_interpret(X, y, nsample = nshap2, cols = cols)
-        skater_interpret(pyo.predict, X, y, nsample = nskater)
+        # skater_interpret(pyo.predict, X, y, nsample = nskater)
     end
 end
 

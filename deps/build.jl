@@ -4,12 +4,6 @@ using BinDeps: generate_steps, getallproviders, lower, PackageManager
 
 !Sys.islinux() && exit()
 
-if conda && Conda.version("python") >= v"3.7"
-    # skater does not support python3.7
-    Conda.add("python=3.6")
-    Pkg.build("PyCall")
-end
-
 if isnothing(Sys.which("sudo")) # in docker
     try run(`apt update`) catch end
     try run(`yum update`) catch end
@@ -29,11 +23,12 @@ for dep in bindeps_context.deps
     cmd = lower(generate_steps(dep, dp, opts)).steps[1]
     i = findfirst(x -> x == "install", cmd.exec)
     insert!(cmd.exec, i + 1, "-y")
-    run(cmd)
+    println(cmd)
+    try run(cmd) catch end
 end
 
-run(`$python -m pip install --user pandas sklearn matplotlib lightgbm ipython shap keras tzlocal PyPDF2 unidecode pdpbox`)
-run(`$python -m pip install git+https://github.com/AStupidBear/Skater.git`)
+run(`$python -m pip install --user pandas "scikit-learn<=0.22.2" matplotlib lightgbm ipython shap keras tzlocal PyPDF2 unidecode pdpbox`)
+run(`$python -m pip install git+https://github.com/oracle/Skater.git`)
 
 buildsh = joinpath(@__DIR__, "build.sh")
 ENV["JULIA_DEPOT_PATH"] = DEPOT_PATH[1]
